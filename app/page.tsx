@@ -13,11 +13,13 @@ export default function Home() {
       }}
     >
       <h1 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>
-        Platform skeleton is live 🎉
+        Platform skeleton is live 🎉 Testing 1 2 3 3 4 5 
       </h1>
       <p style={{ color: '#666', maxWidth: 420 }}>
         Phase 0.3 — Next.js app deployed on Vercel. Tenant storefronts and
         onboarding land here in Phase 1.
+
+        LETS GOOOOO
       </p>
     </main>
   );
