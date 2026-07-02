@@ -41,6 +41,23 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Storefront routing: {slug}.localhost dev subdomains rewrite to the
+  // public storefront shell. Scoped to *.localhost only so it can't
+  // misfire on the *.vercel.app production host, which has no real
+  // custom domain yet (see PLAN.md).
+  const hostname = host.split(':')[0];
+  const slugMatch = hostname.match(/^([^.]+)\.localhost$/);
+
+  if (slugMatch) {
+    const slug = slugMatch[1];
+    const suffix = request.nextUrl.pathname === '/' ? '' : request.nextUrl.pathname;
+    const url = request.nextUrl.clone();
+    url.pathname = `/storefront/${slug}${suffix}`;
+    const rewritten = NextResponse.rewrite(url);
+    response.cookies.getAll().forEach((cookie) => rewritten.cookies.set(cookie));
+    return rewritten;
+  }
+
   if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
