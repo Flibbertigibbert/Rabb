@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function DashboardPage() {
@@ -14,11 +15,10 @@ export default async function DashboardPage() {
 
   // No .eq('id', user.id) needed here — RLS (merchants_select_own from
   // Phase 0.2) already restricts this to the logged-in merchant's own
-  // row. This query doubles as a live confirmation that RLS + the
-  // signup trigger both worked end-to-end for a real user.
+  // row.
   const { data: merchant, error } = await supabase
     .from('merchants')
-    .select('business_name, slug, email, created_at')
+    .select('business_name, slug, email, created_at, kyc_status')
     .single();
 
   return (
@@ -53,7 +53,39 @@ export default async function DashboardPage() {
           <p style={{ color: '#666' }}>
             Slug: <code>{merchant.slug}</code>
           </p>
-          <p style={{ color: '#666' }}>{merchant.email}</p>
+          <p style={{ color: '#666', marginBottom: '1.5rem' }}>{merchant.email}</p>
+
+          {merchant.kyc_status !== 'verified' && (
+            <div
+              style={{
+                padding: '1rem',
+                background: '#fff8e6',
+                border: '1px solid #f0d68a',
+                borderRadius: '8px',
+                maxWidth: 380,
+              }}
+            >
+              <p style={{ fontSize: '0.875rem', marginBottom: '0.75rem' }}>
+                Add your bank details to start accepting payments from
+                customers.
+              </p>
+              <Link
+                href="/dashboard/bank-details"
+                style={{
+                  display: 'inline-block',
+                  padding: '0.5rem 1rem',
+                  background: '#111',
+                  color: '#fff',
+                  borderRadius: '6px',
+                  textDecoration: 'none',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                }}
+              >
+                Activate payments
+              </Link>
+            </div>
+          )}
         </>
       )}
     </main>
