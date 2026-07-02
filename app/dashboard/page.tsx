@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import LogoutButton from './logout-button';
 
 export default async function DashboardPage() {
   const supabase = createClient();
@@ -10,7 +11,7 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/signup');
+    redirect('/login');
   }
 
   // No .eq('id', user.id) needed here — RLS (merchants_select_own from
@@ -32,8 +33,13 @@ export default async function DashboardPage() {
         padding: '2rem',
         fontFamily: 'system-ui, sans-serif',
         textAlign: 'center',
+        position: 'relative',
       }}
     >
+      <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+        <LogoutButton />
+      </div>
+
       {error || !merchant ? (
         <>
           <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>

@@ -5,81 +5,42 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
-export default function SignupPage() {
+export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  const [businessName, setBusinessName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [checkEmail, setCheckEmail] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    const { data, error: signUpError } = await supabase.auth.signUp({
+    const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
-      options: {
-        // Stored in auth.users.raw_user_meta_data — the 0004 trigger
-        // reads this to create the merchants row automatically.
-        data: { business_name: businessName },
-      },
     });
 
     setLoading(false);
 
-    if (signUpError) {
-      setError(signUpError.message);
-      return;
-    }
-
-    // If email confirmation is ON in Supabase Auth settings, there's
-    // no session yet — data.session will be null.
-    if (!data.session) {
-      setCheckEmail(true);
+    if (signInError) {
+      setError('Incorrect email or password. Please try again.');
       return;
     }
 
     router.push('/dashboard');
-  }
-
-  if (checkEmail) {
-    return (
-      <main style={containerStyle}>
-        <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-          Check your email
-        </h1>
-        <p style={{ color: '#666', maxWidth: 380 }}>
-          We sent a confirmation link to <strong>{email}</strong>. Click it to
-          activate your account, then come back and log in.
-        </p>
-      </main>
-    );
+    router.refresh();
   }
 
   return (
     <main style={containerStyle}>
       <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: 360 }}>
         <h1 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>
-          Create your storefront
+          Log in to your storefront
         </h1>
-
-        <label style={labelStyle}>
-          Business name
-          <input
-            type="text"
-            required
-            value={businessName}
-            onChange={(e) => setBusinessName(e.target.value)}
-            placeholder="Buy My Wear"
-            style={inputStyle}
-          />
-        </label>
 
         <label style={labelStyle}>
           Email
@@ -98,10 +59,9 @@ export default function SignupPage() {
           <input
             type="password"
             required
-            minLength={6}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="At least 6 characters"
+            placeholder="Your password"
             style={inputStyle}
           />
         </label>
@@ -113,13 +73,13 @@ export default function SignupPage() {
         )}
 
         <button type="submit" disabled={loading} style={buttonStyle}>
-          {loading ? 'Creating account…' : 'Create account'}
+          {loading ? 'Logging in…' : 'Log in'}
         </button>
 
         <p style={{ fontSize: '0.875rem', color: '#666', marginTop: '1rem' }}>
-          Already have an account?{' '}
-          <Link href="/login" style={{ color: '#111', fontWeight: 600 }}>
-            Log in
+          Don't have an account?{' '}
+          <Link href="/signup" style={{ color: '#111', fontWeight: 600 }}>
+            Sign up
           </Link>
         </p>
       </form>
