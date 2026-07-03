@@ -22,6 +22,19 @@ export default async function DashboardPage() {
     .select('business_name, slug, email, created_at, kyc_status')
     .single();
 
+  // stock_quantity <= low_stock_threshold compares two columns on the
+  // same row, which PostgREST's query builder can't express as a filter
+  // (its operators only compare a column to a literal) — so fetch the
+  // merchant's own products (RLS-scoped) and filter in JS instead.
+  const { data: products } = await supabase
+    .from('products')
+    .select('id, name, stock_quantity, low_stock_threshold')
+    .order('stock_quantity', { ascending: true });
+
+  const lowStockProducts = (products ?? []).filter(
+    (p) => p.stock_quantity <= p.low_stock_threshold
+  );
+
   return (
     <main
       style={{
@@ -78,6 +91,51 @@ export default async function DashboardPage() {
           >
             Manage products
           </Link>
+
+          {lowStockProducts.length > 0 && (
+            <div
+              style={{
+                padding: '1rem',
+                background: '#fdeeee',
+                border: '1px solid #f3c6c2',
+                borderRadius: '8px',
+                maxWidth: 380,
+                width: '100%',
+                textAlign: 'left',
+                marginBottom: '1rem',
+              }}
+            >
+              <p style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+                Low stock
+              </p>
+              {lowStockProducts.map((product) => (
+                <div
+                  key={product.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    fontSize: '0.8125rem',
+                    padding: '0.375rem 0',
+                    borderTop: '1px solid #f3c6c2',
+                  }}
+                >
+                  <span>{product.name}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ color: '#a13a33' }}>
+                      {product.stock_quantity} left (threshold {product.low_stock_threshold})
+                    </span>
+                    <Link
+                      href={`/dashboard/products/${product.id}/edit`}
+                      style={{ color: '#111', fontWeight: 600, textDecoration: 'none' }}
+                    >
+                      Edit
+                    </Link>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {merchant.kyc_status !== 'verified' && (
             <div
