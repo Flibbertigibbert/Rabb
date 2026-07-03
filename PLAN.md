@@ -1,9 +1,9 @@
 # PLAN.md — Working Context for Claude Code
 
-> Drop this file in the repo root. It is the source of truth for what to build,
-> what already exists, and the conventions to follow. Work one deliverable at a
-> time. A deliverable is DONE when its acceptance criteria are verified by the
-> human, not when code compiles.
+> This file is the source of truth for what to build, what already exists, and
+> the conventions to follow. Work one deliverable at a time. A deliverable is
+> DONE when its acceptance criteria are verified by the human, not when code
+> compiles.
 
 ## Project
 
@@ -17,6 +17,7 @@ products → customers buy via Paystack split payments (1.5% platform commission
 subaccounts, splits) · Vercel (hosting, free tier).
 
 **Budget constraint:** everything must run on Supabase + Vercel free tiers.
+Supabase Storage free tier is 1GB — image compression is not optional.
 
 ## Architecture rules (do not violate)
 
@@ -27,24 +28,39 @@ subaccounts, splits) · Vercel (hosting, free tier).
    and do NOT use the service role key for merchant-facing reads.
 2. **Service role key is for two things only:** the Phase 3 checkout write path
    (anonymous customers) and the Paystack webhook handler. It never appears in
-   client components and is never prefixed `NEXT_PUBLIC_`.
-3. **Payments are immutable once `successful`** (DB trigger enforces this).
+   client components and is never prefixed `NEXT_PUBLIC_`. This applies to
+   dev-time/tooling access too — if you need schema facts, ask the human or
+   read the migration files in supabase/, not the live DB.
+3. **Public storefront reads use `lib/supabase/anon.ts`** (stateless anon
+   client, no cookies) — NOT `server.ts`. This guarantees RLS evaluates as anon
+   even when the visitor holds a merchant session (e.g. a merchant previewing
+   their own store). Established in 1.4; keep it that way for all
+   customer-facing pages, including product queries.
+4. **Payments are immutable once `successful`** (DB trigger enforces this).
    Refunds = new reversing entry, never an edit.
-4. **Paystack secret key stays server-side.** All Paystack calls go through
+5. **Paystack secret key stays server-side.** All Paystack calls go through
    `/app/api/paystack/*` route handlers.
-5. **Customers never log in.** Guest checkout only. Phone required, email
+6. **Customers never log in.** Guest checkout only. Phone required, email
    optional.
-6. **TypeScript strict:** `npm run build` must pass before any work is
+7. **TypeScript strict:** `npm run build` must pass before any work is
    considered complete. Run it yourself; fix your own type errors.
-7. **Mobile-first, lightweight pages.** Storefront target: <2s load on
-   throttled 3G. Compress images client-side before upload.
+8. **Mobile-first, lightweight pages.** Storefront target: <2s load on
+   throttled 3G. Compress images client-side before upload (target <500KB
+   per image).
+9. **Anon column exposure is explicit.** `merchants`: anon may read only
+   business_name + slug (0006 migration). `products`: anon may read active
+   products but cost_price and margin_unknown are column-REVOKEd. Any new
+   anon-readable column requires an explicit new grant — never widen an
+   existing one casually.
 
-## Database (already applied in Supabase — migrations 0001–0005)
+## Database (applied in Supabase — migrations 0001–0006)
 
 - `merchants` — id == auth.users.id; slug (unique); paystack_subaccount_code;
-  kyc_status ('pending' | 'verified' | 'unverified_active')
-- `products` — cost_price nullable; `margin_unknown` auto-syncs via trigger;
-  stock_quantity; low_stock_threshold
+  kyc_status ('pending' | 'verified' | 'unverified_active'); anon column-level
+  read on business_name + slug only
+- `products` — cost_price nullable; `margin_unknown` auto-syncs via DB trigger
+  (do NOT manage it in app code); stock_quantity; low_stock_threshold;
+  is_active; anon read of active rows minus cost columns
 - `orders` — guest customer fields; status pending/paid/refunded/cancelled;
   paystack_reference unique
 - `order_items` — denormalized merchant_id; price/name snapshots
@@ -52,25 +68,31 @@ subaccounts, splits) · Vercel (hosting, free tier).
   unique (idempotency keys)
 - Signup trigger `handle_new_merchant` auto-creates merchant row with
   sequential slug collision handling (shopaa → shopaa-2)
-- RLS: merchants CRUD own row; products merchant-CRUD + anon read of active
-  products (cost_price column-level REVOKEd from anon); orders/order_items/
-  payments merchant SELECT only
 
-Schema changes go in new numbered SQL files in `supabase/` for the human to
-apply — do not assume you can run migrations against the live DB.
+Schema changes go in new numbered SQL files in `supabase/` (next number: 0007)
+for the human to apply — do not assume you can run migrations against the
+live DB. The repo `supabase/` folder is the numbering authority.
 
-## Current state (verified working)
+## Current state — Phase 0 & Phase 1 CLOSED (all human-verified)
 
-- ✅ 0.3 Vercel auto-deploy from `main`
-- ✅ 1.1 Signup at `/signup` (email confirmation currently OFF in Supabase for
-  dev speed — do not build assuming a session always exists immediately)
-- ✅ `/auth/callback` route exists for when confirmation is re-enabled
-- ✅ 1.2 Slug collision handling (built; human verifying)
-- 🟡 1.3 Bank details flow at `/dashboard/bank-details` + 3 Paystack API routes
-  (built; awaiting human sandbox test with sk_test_ key)
-- ✅ Subdomain routing middleware proven on *.localhost (reads slug from Host
-  header). No live domain yet — all storefront work must function on
-  `{slug}.localhost:3000`.
+- ✅ Signup `/signup`, login `/login`, logout; friendly auth errors
+- ✅ Merged middleware.ts: session refresh + /dashboard auth-gating +
+  subdomain rewrite ({slug}.localhost:3000 → /storefront/{slug}, scoped to
+  `^([^.]+)\.localhost$` so it can't misfire on *.vercel.app)
+- ✅ Bank details flow `/dashboard/bank-details` + 3 Paystack routes
+  (banks / resolve-account / create-subaccount); tested in sandbox;
+  kyc_status flips to 'verified'; dashboard shows activation banner until then
+- ✅ Public storefront shell at /storefront/[slug]: business name + empty
+  state; branded not-found page with real 404; anon client; <2s on
+  throttled 3G verified
+- ✅ Email confirmation is OFF in Supabase for dev speed (do not build
+  assuming a session always exists immediately after signUp). /auth/callback
+  exists for when it's re-enabled (tracked as 5.6)
+- 🟡 No live domain yet — all storefront work must function on
+  {slug}.localhost:3000. Domain purchase → 0.4b is a config task (Vercel
+  wildcard + widen the middleware host regex), owned by the human
+- Known gap, deliberately deferred: no password-reset flow (candidate 1.7 /
+  Phase 5 item — do not build unprompted)
 
 ## Environment
 
@@ -80,36 +102,51 @@ first three also set in Vercel.
 
 ## Work queue (strict order)
 
-### → NEXT: 1.5 Login + logout
-- `/login` page: email + password via supabase.auth.signInWithPassword,
-  redirect to /dashboard; link to /signup and vice versa
-- Logout button on dashboard (supabase.auth.signOut → redirect /login)
-- Friendly error on bad credentials
-- ACCEPTANCE: returning merchant can sign in and out; wrong password shows a
-  clear message, not a crash
+### → NEXT: 2.1 Product CRUD + image upload
+- Merchant dashboard pages to create / list / edit / delete (or deactivate)
+  own products: name, description, image, selling_price, cost_price,
+  stock_quantity, low_stock_threshold, is_active
+- cost_price is OPTIONAL on save — never block the form on it; margin_unknown
+  is trigger-managed, leave it alone
+- Image upload to Supabase Storage: compress client-side before upload
+  (<500KB target); store the public URL in products.image_url. Storage
+  bucket + any policies = SQL/config file for the human to apply (0007)
+- Delete should prefer soft-delete (is_active = false) if the product has
+  order history; hard delete acceptable only when no order_items reference it
+- Merchant-facing styling: utilitarian is fine (design pass is 5.7)
+- ACCEPTANCE: merchant can create a product with photo in under a minute on
+  a phone-sized viewport; product appears/updates/disappears correctly;
+  skipping cost price saves cleanly; a second merchant account sees none
+  of the first merchant's products
 
-### 1.6 Auth session middleware
-- Next.js middleware using @supabase/ssr pattern: refresh expired tokens on
-  every request, redirect unauthenticated /dashboard/* traffic to /login
-- Must coexist with the existing subdomain-detection middleware — merge into
-  one middleware.ts, storefront (subdomain) routes stay public
-- ACCEPTANCE: session survives token expiry; /dashboard redirects to /login
-  when logged out; storefront routes never require auth
+### 2.1b Storefront renders real products
+- Replace the permanent empty state in /storefront/[slug] with a real
+  product grid (name, image, price, stock state) for active products;
+  keep the empty state for merchants with no active products
+- Still anon client, still no cost_price exposure, still <2s throttled 3G
+  with real product images — this re-tests NFR-2.1 under realistic weight
+- ACCEPTANCE: products created in 2.1 appear on the public storefront;
+  out-of-stock products are visibly marked or hidden (pick one, state which)
 
-### 1.4 Public storefront shell (FIRST customer-facing page — design matters)
-- Route resolves merchant by slug from subdomain ({slug}.localhost:3000);
-  unknown slug → clean 404 ("store not found")
-- Shows business name + "no products yet" empty state
-- This page gets real visual design (typography, spacing, trust cues) — NOT
-  the utilitarian styling of the merchant pages. Mobile-first.
-- Uses anon Supabase client (public page) — RLS already permits anon read of
-  active products; cost_price is column-blocked
-- ACCEPTANCE: loads <2s on throttled 3G in dev tools; looks trustworthy on a
-  phone screen; unknown slugs 404 cleanly
+### 2.2 Low-stock warning on dashboard
+- Dashboard surface listing products at/below their low_stock_threshold
+- ACCEPTANCE: lowering a threshold above/below current stock moves the
+  product in/out of the warning list
 
-### Phase 2 (after Phase 1 closes): 2.1 product CRUD + image upload →
-### 2.2 low-stock warning → 2.3 margin-unknown UI treatment
-(Details in mvp-deliverables-plan-v2.md — read it before starting Phase 2.)
+### 2.3 Margin-unknown UI treatment
+- Dashboard indicator on products where margin_unknown = true ("margin
+  unknown" badge or similar), nudging — not forcing — cost entry
+- Optional one-time "default margin %" merchant setting (schema change →
+  0007 or 0008 for the human) that estimates cost for margin-unknown
+  products; estimated margins must be visually distinct from real ones
+  everywhere they appear
+- ACCEPTANCE: no ₦0-cost-as-real-margin anywhere; estimated vs real is
+  always distinguishable
+
+### Phase 3 (after Phase 2 closes): checkout, split payments, webhooks.
+Do NOT start any Phase 3 work unprompted — 3.3 (webhook idempotency) is
+explicitly flagged for line-by-line human review before merge. Details in
+mvp-deliverables-plan-v2.md.
 
 ## Session protocol
 
@@ -120,3 +157,7 @@ first three also set in Vercel.
   deliverable requires it.
 - If a deliverable seems to require violating an architecture rule, stop and
   say so instead of working around it.
+- If this file contradicts what you find in the actual code or database,
+  say so before proceeding — the discrepancy is the bug (this happened once:
+  the file claimed anon could read merchants; the policies said otherwise.
+  Flagging it was correct).

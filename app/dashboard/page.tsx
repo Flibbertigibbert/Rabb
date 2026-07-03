@@ -61,6 +61,24 @@ export default async function DashboardPage() {
           </p>
           <p style={{ color: '#666', marginBottom: '1.5rem' }}>{merchant.email}</p>
 
+          <Link
+            href="/dashboard/products"
+            style={{
+              display: 'inline-block',
+              padding: '0.5rem 1rem',
+              background: '#fff',
+              color: '#111',
+              border: '1px solid #ddd',
+              borderRadius: '6px',
+              textDecoration: 'none',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              marginBottom: '1rem',
+            }}
+          >
+            Manage products
+          </Link>
+
           {merchant.kyc_status !== 'verified' && (
             <div
               style={{
