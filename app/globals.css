@@ -8,3 +8,44 @@ body {
   background: #fafafa;
   color: #111;
 }
+
+/* Dashboard design tokens (app/dashboard/dashboard.module.css consumes
+   these) — CSS Modules can't declare :root itself (Next enforces "pure"
+   selectors, no fully-global rules in a .module.css file), so they live
+   here instead. Unused outside the dashboard — the public storefront,
+   login, and signup pages don't reference any var(--db-*). */
+:root {
+  --db-text: #111;
+  --db-text-muted: #666;
+  --db-text-faint: #888;
+  --db-border: #ddd;
+  --db-border-soft: #eee;
+  --db-bg-page: #fafafa;
+  --db-bg-card: #fff;
+  --db-danger: #c0392b;
+  --db-danger-border: #f0c4bd;
+  --db-danger-bg: #fdeeee;
+  --db-warning: #a15c00;
+  --db-warning-bg: #fdf1dc;
+  --db-warning-border: #f3c6c2;
+  --db-radius: 8px;
+  --db-radius-sm: 6px;
+}
+
+/* Public design system (2.5) — landing page + storefront only.
+   app/public.module.css consumes these. Separate namespace from --db-*
+   so the two surfaces never accidentally share a value. */
+:root {
+  --pub-ink: #0a0a0a;
+  --pub-ink-muted: #52525b;
+  --pub-ink-faint: #8b8b93;
+  --pub-bg: #ffffff;
+  --pub-bg-tint: #eef4ff;
+  --pub-border: #e5e7eb;
+  --pub-accent: #2563eb;
+  --pub-accent-dark: #1d4ed8;
+  --pub-radius-card: 16px;
+  --pub-radius-sm: 10px;
+  --pub-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  --pub-shadow-hover: 0 16px 40px rgba(15, 23, 42, 0.1);
+}

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { compressImage } from '@/lib/image-compress';
+import styles from '../../../dashboard.module.css';
 
 export default function EditProductPage() {
   const params = useParams<{ id: string }>();
@@ -136,12 +137,14 @@ export default function EditProductPage() {
       return;
     }
 
-    router.push('/dashboard/products');
+    // Query flag triggers a visible "Changes saved" toast on the list
+    // page — a save should never be silent, even across a redirect.
+    router.push('/dashboard/products?updated=1');
   }
 
   if (loading) {
     return (
-      <main style={containerStyle}>
+      <main style={{ padding: '2rem 1.25rem' }}>
         <p style={{ color: '#666' }}>Loading…</p>
       </main>
     );
@@ -149,7 +152,7 @@ export default function EditProductPage() {
 
   if (notFound) {
     return (
-      <main style={containerStyle}>
+      <main style={{ padding: '2rem 1.25rem' }}>
         <h1 style={{ fontSize: '1.375rem', marginBottom: '0.5rem' }}>Product not found</h1>
         <p style={{ color: '#666', marginBottom: '1rem' }}>
           It may have been removed, or it belongs to another store.
@@ -162,38 +165,40 @@ export default function EditProductPage() {
   }
 
   return (
-    <main style={containerStyle}>
-      <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: 380 }}>
+    <main style={{ padding: '2rem 1.25rem' }}>
+      <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: 380, margin: '0 auto' }}>
         <h1 style={{ fontSize: '1.375rem', marginBottom: '1.5rem' }}>Edit product</h1>
 
-        <label style={labelStyle}>
+        <label className={styles.label}>
           Name
           <input
             type="text"
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            style={inputStyle}
+            className={styles.input}
           />
         </label>
 
-        <label style={labelStyle}>
+        <label className={styles.label}>
           Description (optional)
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
-            style={{ ...inputStyle, resize: 'vertical' }}
+            className={styles.textarea}
+            style={{ resize: 'vertical' }}
           />
         </label>
 
-        <label style={labelStyle}>
+        <label className={styles.label}>
           Photo (optional)
           <input
             type="file"
             accept="image/*"
             onChange={(e) => handleImageChange(e.target.files?.[0] || null)}
-            style={{ ...inputStyle, padding: '0.5rem 0' }}
+            className={styles.input}
+            style={{ padding: '0.5rem 0' }}
           />
         </label>
 
@@ -206,7 +211,7 @@ export default function EditProductPage() {
           />
         )}
 
-        <label style={labelStyle}>
+        <label className={styles.label}>
           Selling price (₦)
           <input
             type="number"
@@ -215,11 +220,11 @@ export default function EditProductPage() {
             step="0.01"
             value={sellingPrice}
             onChange={(e) => setSellingPrice(e.target.value)}
-            style={inputStyle}
+            className={styles.input}
           />
         </label>
 
-        <label style={labelStyle}>
+        <label className={styles.label}>
           Cost price (₦, optional)
           <input
             type="number"
@@ -228,11 +233,15 @@ export default function EditProductPage() {
             value={costPrice}
             onChange={(e) => setCostPrice(e.target.value)}
             placeholder="Skip if unknown"
-            style={inputStyle}
+            className={styles.input}
           />
         </label>
+        <p className={styles.helperText}>
+          Skipping this is fine — we'll flag the product as "margin unknown"
+          on your products list instead of guessing a profit.
+        </p>
 
-        <label style={labelStyle}>
+        <label className={styles.label}>
           Stock quantity
           <input
             type="number"
@@ -240,11 +249,11 @@ export default function EditProductPage() {
             step="1"
             value={stockQuantity}
             onChange={(e) => setStockQuantity(e.target.value)}
-            style={inputStyle}
+            className={styles.input}
           />
         </label>
 
-        <label style={labelStyle}>
+        <label className={styles.label}>
           Low stock warning threshold
           <input
             type="number"
@@ -252,11 +261,11 @@ export default function EditProductPage() {
             step="1"
             value={lowStockThreshold}
             onChange={(e) => setLowStockThreshold(e.target.value)}
-            style={inputStyle}
+            className={styles.input}
           />
         </label>
 
-        <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <label className={styles.label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <input
             type="checkbox"
             checked={isActive}
@@ -265,13 +274,9 @@ export default function EditProductPage() {
           Visible on storefront
         </label>
 
-        {error && (
-          <p style={{ color: '#c0392b', fontSize: '0.875rem', marginBottom: '1rem' }}>
-            {error}
-          </p>
-        )}
+        {error && <p className={styles.errorText}>{error}</p>}
 
-        <button type="submit" disabled={saving} style={buttonStyle}>
+        <button type="submit" disabled={saving} className={styles.btnPrimary} style={{ width: '100%' }}>
           {saving ? 'Saving…' : 'Save changes'}
         </button>
 
@@ -285,43 +290,3 @@ export default function EditProductPage() {
     </main>
   );
 }
-
-const containerStyle: React.CSSProperties = {
-  minHeight: '100vh',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  padding: '2rem 1.25rem',
-  fontFamily: 'system-ui, sans-serif',
-};
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  textAlign: 'left',
-  fontSize: '0.875rem',
-  fontWeight: 600,
-  marginBottom: '1rem',
-};
-
-const inputStyle: React.CSSProperties = {
-  display: 'block',
-  width: '100%',
-  marginTop: '0.375rem',
-  padding: '0.625rem 0.75rem',
-  fontSize: '1rem',
-  border: '1px solid #ddd',
-  borderRadius: '6px',
-  fontFamily: 'inherit',
-};
-
-const buttonStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '0.75rem',
-  fontSize: '1rem',
-  fontWeight: 600,
-  color: '#fff',
-  background: '#111',
-  border: 'none',
-  borderRadius: '6px',
-  cursor: 'pointer',
-};

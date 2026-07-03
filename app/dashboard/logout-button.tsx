@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-export default function LogoutButton() {
+export default function LogoutButton({ className }: { className?: string }) {
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
 
@@ -16,20 +16,7 @@ export default function LogoutButton() {
   }
 
   return (
-    <button
-      onClick={handleLogout}
-      disabled={loading}
-      style={{
-        padding: '0.5rem 1rem',
-        fontSize: '0.875rem',
-        fontWeight: 600,
-        color: '#111',
-        background: '#fff',
-        border: '1px solid #ddd',
-        borderRadius: '6px',
-        cursor: 'pointer',
-      }}
-    >
+    <button onClick={handleLogout} disabled={loading} className={className}>
       {loading ? 'Logging out…' : 'Log out'}
     </button>
   );

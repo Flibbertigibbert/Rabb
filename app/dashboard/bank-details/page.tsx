@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import styles from '../dashboard.module.css';
 
 type Bank = { name: string; code: string };
 
@@ -85,7 +86,7 @@ export default function BankDetailsPage() {
   }
 
   return (
-    <main style={containerStyle}>
+    <main style={{ padding: '2rem 1.25rem', display: 'flex', justifyContent: 'center' }}>
       <div style={{ width: '100%', maxWidth: 380 }}>
         <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
           Activate payments
@@ -95,12 +96,12 @@ export default function BankDetailsPage() {
           from sales.
         </p>
 
-        <label style={labelStyle}>
+        <label className={styles.label}>
           Bank
           <select
             value={bankCode}
             onChange={(e) => handleBankChange(e.target.value)}
-            style={inputStyle}
+            className={styles.select}
           >
             <option value="">Select your bank</option>
             {banks.map((bank) => (
@@ -111,7 +112,7 @@ export default function BankDetailsPage() {
           </select>
         </label>
 
-        <label style={labelStyle}>
+        <label className={styles.label}>
           Account number
           <input
             type="text"
@@ -120,33 +121,30 @@ export default function BankDetailsPage() {
             value={accountNumber}
             onChange={(e) => handleAccountNumberChange(e.target.value)}
             placeholder="0123456789"
-            style={inputStyle}
+            className={styles.input}
           />
         </label>
 
-        {error && (
-          <p style={{ color: '#c0392b', fontSize: '0.875rem', marginBottom: '1rem' }}>
-            {error}
-          </p>
-        )}
+        {error && <p className={styles.errorText}>{error}</p>}
 
         {!resolvedName ? (
           <button
             onClick={handleVerify}
             disabled={!bankCode || accountNumber.length < 10 || resolving}
-            style={buttonStyle}
+            className={styles.btnPrimary}
+            style={{ width: '100%' }}
           >
             {resolving ? 'Verifying…' : 'Verify account'}
           </button>
         ) : (
           <>
-            <div style={confirmBoxStyle}>
+            <div className={styles.card} style={{ background: '#f4f4f4', marginBottom: '1rem', textAlign: 'left' }}>
               <p style={{ fontSize: '0.875rem', color: '#666', marginBottom: '0.25rem' }}>
                 Account name:
               </p>
               <p style={{ fontWeight: 600 }}>{resolvedName}</p>
             </div>
-            <button onClick={handleActivate} disabled={saving} style={buttonStyle}>
+            <button onClick={handleActivate} disabled={saving} className={styles.btnPrimary} style={{ width: '100%' }}>
               {saving ? 'Activating…' : 'Confirm & activate payments'}
             </button>
           </>
@@ -154,7 +152,8 @@ export default function BankDetailsPage() {
 
         <button
           onClick={() => router.push('/dashboard')}
-          style={{ ...buttonStyle, background: 'transparent', color: '#666', marginTop: '0.75rem' }}
+          className={styles.btnSecondary}
+          style={{ width: '100%', marginTop: '0.75rem', border: 'none' }}
         >
           Do this later
         </button>
@@ -162,51 +161,3 @@ export default function BankDetailsPage() {
     </main>
   );
 }
-
-const containerStyle: React.CSSProperties = {
-  minHeight: '100vh',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '2rem',
-  fontFamily: 'system-ui, sans-serif',
-};
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  textAlign: 'left',
-  fontSize: '0.875rem',
-  fontWeight: 600,
-  marginBottom: '1rem',
-};
-
-const inputStyle: React.CSSProperties = {
-  display: 'block',
-  width: '100%',
-  marginTop: '0.375rem',
-  padding: '0.625rem 0.75rem',
-  fontSize: '1rem',
-  border: '1px solid #ddd',
-  borderRadius: '6px',
-};
-
-const buttonStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '0.75rem',
-  fontSize: '1rem',
-  fontWeight: 600,
-  color: '#fff',
-  background: '#111',
-  border: 'none',
-  borderRadius: '6px',
-  cursor: 'pointer',
-};
-
-const confirmBoxStyle: React.CSSProperties = {
-  padding: '0.75rem',
-  background: '#f4f4f4',
-  borderRadius: '6px',
-  marginBottom: '1rem',
-  textAlign: 'left',
-};

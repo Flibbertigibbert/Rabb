@@ -1,18 +1,14 @@
-import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import LogoutButton from './logout-button';
+import StorefrontLink from './storefront-link';
+import styles from './dashboard.module.css';
 
 export default async function DashboardPage() {
   const supabase = createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect('/login');
-  }
+  // Auth is already gated by app/dashboard/layout.tsx — every /dashboard/*
+  // page is guaranteed a session by the time it renders.
 
   // No .eq('id', user.id) needed here — RLS (merchants_select_own from
   // Phase 0.2) already restricts this to the logged-in merchant's own
@@ -35,141 +31,90 @@ export default async function DashboardPage() {
     (p) => p.stock_quantity <= p.low_stock_threshold
   );
 
+  // Read the request host rather than hardcoding a domain, so this keeps
+  // working unchanged once a live domain replaces {slug}.localhost:3000
+  // (see PLAN.md 0.4b) — the middleware's host regex is the only place
+  // that needs to widen at that point.
+  const host = headers().get('host') || '';
+  const protocol = host.includes('localhost') ? 'http' : 'https';
+  const storefrontUrl = merchant ? `${protocol}://${merchant.slug}.${host}` : null;
+
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem',
-        fontFamily: 'system-ui, sans-serif',
-        textAlign: 'center',
-        position: 'relative',
-      }}
-    >
-      <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
-        <LogoutButton />
-      </div>
+    <main style={{ padding: '2rem 1.25rem' }}>
+      <div style={{ width: '100%', maxWidth: 480, margin: '0 auto', textAlign: 'center' }}>
+        {error || !merchant ? (
+          <>
+            <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
+              No merchant row found
+            </h1>
+            <p style={{ color: '#666', maxWidth: 420, margin: '0 auto' }}>
+              You're logged in, but no matching row exists in{' '}
+              <code>merchants</code>. Check that the 0004 trigger ran and that
+              RLS policies from 0.2 are applied.
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
+              Welcome, {merchant.business_name} 🎉
+            </h1>
+            <p style={{ color: '#666', marginBottom: '1.5rem' }}>{merchant.email}</p>
 
-      {error || !merchant ? (
-        <>
-          <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-            No merchant row found
-          </h1>
-          <p style={{ color: '#666', maxWidth: 420 }}>
-            You're logged in, but no matching row exists in{' '}
-            <code>merchants</code>. Check that the 0004 trigger ran and that
-            RLS policies from 0.2 are applied.
-          </p>
-        </>
-      ) : (
-        <>
-          <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-            Welcome, {merchant.business_name} 🎉
-          </h1>
-          <p style={{ color: '#666' }}>
-            Slug: <code>{merchant.slug}</code>
-          </p>
-          <p style={{ color: '#666', marginBottom: '1.5rem' }}>{merchant.email}</p>
+            {storefrontUrl && <StorefrontLink url={storefrontUrl} />}
 
-          <Link
-            href="/dashboard/products"
-            style={{
-              display: 'inline-block',
-              padding: '0.5rem 1rem',
-              background: '#fff',
-              color: '#111',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              textDecoration: 'none',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              marginBottom: '1rem',
-            }}
-          >
-            Manage products
-          </Link>
-
-          {lowStockProducts.length > 0 && (
-            <div
-              style={{
-                padding: '1rem',
-                background: '#fdeeee',
-                border: '1px solid #f3c6c2',
-                borderRadius: '8px',
-                maxWidth: 380,
-                width: '100%',
-                textAlign: 'left',
-                marginBottom: '1rem',
-              }}
-            >
-              <p style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-                Low stock
-              </p>
-              {lowStockProducts.map((product) => (
-                <div
-                  key={product.id}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    fontSize: '0.8125rem',
-                    padding: '0.375rem 0',
-                    borderTop: '1px solid #f3c6c2',
-                  }}
-                >
-                  <span>{product.name}</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ color: '#a13a33' }}>
-                      {product.stock_quantity} left (threshold {product.low_stock_threshold})
-                    </span>
-                    <Link
-                      href={`/dashboard/products/${product.id}/edit`}
-                      style={{ color: '#111', fontWeight: 600, textDecoration: 'none' }}
-                    >
-                      Edit
-                    </Link>
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {merchant.kyc_status !== 'verified' && (
-            <div
-              style={{
-                padding: '1rem',
-                background: '#fff8e6',
-                border: '1px solid #f0d68a',
-                borderRadius: '8px',
-                maxWidth: 380,
-              }}
-            >
-              <p style={{ fontSize: '0.875rem', marginBottom: '0.75rem' }}>
-                Add your bank details to start accepting payments from
-                customers.
-              </p>
-              <Link
-                href="/dashboard/bank-details"
+            {lowStockProducts.length > 0 && (
+              <div
+                className={styles.card}
                 style={{
-                  display: 'inline-block',
-                  padding: '0.5rem 1rem',
-                  background: '#111',
-                  color: '#fff',
-                  borderRadius: '6px',
-                  textDecoration: 'none',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
+                  borderColor: 'var(--db-warning-border)',
+                  background: 'var(--db-danger-bg)',
+                  textAlign: 'left',
+                  marginBottom: '1rem',
                 }}
               >
-                Activate payments
-              </Link>
-            </div>
-          )}
-        </>
-      )}
+                <p style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+                  Low stock
+                </p>
+                {lowStockProducts.map((product) => (
+                  <div
+                    key={product.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      fontSize: '0.8125rem',
+                      padding: '0.375rem 0',
+                      borderTop: '1px solid var(--db-warning-border)',
+                    }}
+                  >
+                    <span>{product.name}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ color: '#a13a33' }}>
+                        {product.stock_quantity} left (threshold {product.low_stock_threshold})
+                      </span>
+                      <Link href={`/dashboard/products/${product.id}/edit`} style={{ color: '#111', fontWeight: 600, textDecoration: 'none' }}>
+                        Edit
+                      </Link>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {merchant.kyc_status !== 'verified' && (
+              <div className={styles.card} style={{ background: '#fff8e6', borderColor: '#f0d68a' }}>
+                <p style={{ fontSize: '0.875rem', marginBottom: '0.75rem' }}>
+                  Add your bank details to start accepting payments from
+                  customers.
+                </p>
+                <Link href="/dashboard/bank-details" className={styles.btnPrimary}>
+                  Activate payments
+                </Link>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </main>
   );
 }

@@ -29,13 +29,12 @@ Supabase Storage free tier is 1GB — image compression is not optional.
 2. **Service role key is for two things only:** the Phase 3 checkout write path
    (anonymous customers) and the Paystack webhook handler. It never appears in
    client components and is never prefixed `NEXT_PUBLIC_`. This applies to
-   dev-time/tooling access too — if you need schema facts, ask the human or
-   read the migration files in supabase/, not the live DB.
+   dev-time/tooling access too — if you need schema facts, read the migration
+   files in `supabase/` or ask the human; do not introspect the live DB.
 3. **Public storefront reads use `lib/supabase/anon.ts`** (stateless anon
    client, no cookies) — NOT `server.ts`. This guarantees RLS evaluates as anon
-   even when the visitor holds a merchant session (e.g. a merchant previewing
-   their own store). Established in 1.4; keep it that way for all
-   customer-facing pages, including product queries.
+   even when the visitor holds a merchant session. Applies to all
+   customer-facing pages.
 4. **Payments are immutable once `successful`** (DB trigger enforces this).
    Refunds = new reversing entry, never an edit.
 5. **Paystack secret key stays server-side.** All Paystack calls go through
@@ -45,54 +44,52 @@ Supabase Storage free tier is 1GB — image compression is not optional.
 7. **TypeScript strict:** `npm run build` must pass before any work is
    considered complete. Run it yourself; fix your own type errors.
 8. **Mobile-first, lightweight pages.** Storefront target: <2s load on
-   throttled 3G. Compress images client-side before upload (target <500KB
-   per image).
-9. **Anon column exposure is explicit.** `merchants`: anon may read only
-   business_name + slug (0006 migration). `products`: anon may read active
-   products but cost_price and margin_unknown are column-REVOKEd. Any new
-   anon-readable column requires an explicit new grant — never widen an
-   existing one casually.
+   throttled 3G. Compress images client-side before upload (<500KB per image).
+9. **Anon column exposure is explicit.** `merchants`: anon reads only
+   business_name + slug. `products`: anon reads active products minus
+   cost_price / margin_unknown. Any new anon-readable column requires an
+   explicit new grant.
+10. **Migrations are numbered files in `supabase/`** for the human to apply —
+    never assume you can run them against the live DB. The repo folder is the
+    numbering authority. Write migrations idempotently (`if not exists` /
+    `or replace`) where possible.
 
-## Database (applied in Supabase — migrations 0001–0006)
+## Launch-gating external items (human-owned, deliberately deferred)
 
-- `merchants` — id == auth.users.id; slug (unique); paystack_subaccount_code;
-  kyc_status ('pending' | 'verified' | 'unverified_active'); anon column-level
-  read on business_name + slug only
-- `products` — cost_price nullable; `margin_unknown` auto-syncs via DB trigger
-  (do NOT manage it in app code); stock_quantity; low_stock_threshold;
-  is_active; anon read of active rows minus cost columns
-- `orders` — guest customer fields; status pending/paid/refunded/cancelled;
-  paystack_reference unique
-- `order_items` — denormalized merchant_id; price/name snapshots
-- `payments` — immutability trigger; paystack_reference + webhook_event_id
-  unique (idempotency keys)
-- Signup trigger `handle_new_merchant` auto-creates merchant row with
-  sequential slug collision handling (shopaa → shopaa-2)
+By explicit decision: domain purchase (→ wildcard DNS/SSL on Vercel) and
+Paystack live-mode activation (requires CAC business registration first — CAC
+takes 3–7 working days, Paystack review takes days more) are sequenced as the
+LAST step before launch. Consequence, accepted: after all code is done and
+verified, launch waits on this paperwork chain (~1.5–2+ weeks). All Phase 3–5
+work happens in sandbox/test mode on {slug}.localhost:3000. Do not treat the
+absence of a live domain or live keys as a blocker for any deliverable.
 
-Schema changes go in new numbered SQL files in `supabase/` (next number: 0007)
-for the human to apply — do not assume you can run migrations against the
-live DB. The repo `supabase/` folder is the numbering authority.
+## Current state — Phases 0, 1, 2 CLOSED; 2.4 shell done (all human-verified)
 
-## Current state — Phase 0 & Phase 1 CLOSED (all human-verified)
-
-- ✅ Signup `/signup`, login `/login`, logout; friendly auth errors
-- ✅ Merged middleware.ts: session refresh + /dashboard auth-gating +
-  subdomain rewrite ({slug}.localhost:3000 → /storefront/{slug}, scoped to
-  `^([^.]+)\.localhost$` so it can't misfire on *.vercel.app)
-- ✅ Bank details flow `/dashboard/bank-details` + 3 Paystack routes
-  (banks / resolve-account / create-subaccount); tested in sandbox;
-  kyc_status flips to 'verified'; dashboard shows activation banner until then
-- ✅ Public storefront shell at /storefront/[slug]: business name + empty
-  state; branded not-found page with real 404; anon client; <2s on
-  throttled 3G verified
-- ✅ Email confirmation is OFF in Supabase for dev speed (do not build
-  assuming a session always exists immediately after signUp). /auth/callback
-  exists for when it's re-enabled (tracked as 5.6)
-- 🟡 No live domain yet — all storefront work must function on
-  {slug}.localhost:3000. Domain purchase → 0.4b is a config task (Vercel
-  wildcard + widen the middleware host regex), owned by the human
-- Known gap, deliberately deferred: no password-reset flow (candidate 1.7 /
-  Phase 5 item — do not build unprompted)
+- ✅ Auth: signup /signup, login /login, logout; friendly errors; merged
+  middleware.ts (session refresh + /dashboard gating + subdomain rewrite
+  {slug}.localhost:3000 → /storefront/{slug}, host regex scoped to
+  `^([^.]+)\.localhost$`)
+- ✅ Email confirmation OFF in Supabase for dev speed; /auth/callback exists
+  for re-enable at launch (tracked 5.6). Do not assume a session exists
+  immediately after signUp
+- ✅ Bank details /dashboard/bank-details + 3 Paystack routes (banks /
+  resolve-account / create-subaccount); kyc_status flips to 'verified'
+- ✅ Products: CRUD at /dashboard/products (+new, +[id]/edit); client-side
+  image compression to public 'product-images' bucket with per-merchant
+  folder policies; soft-delete when order history exists
+- ✅ Storefront /storefront/[slug]: real active products via anon client;
+  branded 404; <2s throttled-3G verified with real images; cost_price absent
+  from all responses
+- ✅ Low-stock warnings; margin_unknown badge; three-state margin rendering
+  (real / ~estimated amber-italic / badge-only); merchants.default_margin_percent
+- ✅ 2.4 dashboard UX shell: sidebar nav (Dashboard · Products · Orders stub ·
+  Payments · Logout), storefront-link module with copy button, shared layout
+- 🟡 Landing page at / is still the Phase-0 placeholder — replaced by 2.5
+- Migrations applied: 0001–0007, 0009 (numbering note: no 0008 exists —
+  next migration number is 0010)
+- Known gap, deliberately deferred: no password-reset flow (Phase 5
+  candidate — do not build unprompted)
 
 ## Environment
 
@@ -102,51 +99,136 @@ first three also set in Vercel.
 
 ## Work queue (strict order)
 
-### → NEXT: 2.1 Product CRUD + image upload
-- Merchant dashboard pages to create / list / edit / delete (or deactivate)
-  own products: name, description, image, selling_price, cost_price,
-  stock_quantity, low_stock_threshold, is_active
-- cost_price is OPTIONAL on save — never block the form on it; margin_unknown
-  is trigger-managed, leave it alone
-- Image upload to Supabase Storage: compress client-side before upload
-  (<500KB target); store the public URL in products.image_url. Storage
-  bucket + any policies = SQL/config file for the human to apply (0007)
-- Delete should prefer soft-delete (is_active = false) if the product has
-  order history; hard delete acceptable only when no order_items reference it
-- Merchant-facing styling: utilitarian is fine (design pass is 5.7)
-- ACCEPTANCE: merchant can create a product with photo in under a minute on
-  a phone-sized viewport; product appears/updates/disappears correctly;
-  skipping cost price saves cleanly; a second merchant account sees none
-  of the first merchant's products
+### → NEXT: 2.5 Landing page + storefront design pass (public surfaces only)
 
-### 2.1b Storefront renders real products
-- Replace the permanent empty state in /storefront/[slug] with a real
-  product grid (name, image, price, stock state) for active products;
-  keep the empty state for merchants with no active products
-- Still anon client, still no cost_price exposure, still <2s throttled 3G
-  with real product images — this re-tests NFR-2.1 under realistic weight
-- ACCEPTANCE: products created in 2.1 appear on the public storefront;
-  out-of-stock products are visibly marked or hidden (pick one, state which)
+Reference archetype: getbumpa.com's landing page — its STRUCTURE, rhythm, and
+polish level. Do NOT clone its copy, layout details, or assets; do not use
+its green. Our differentiator leads: profit clarity, not just sales records.
 
-### 2.2 Low-stock warning on dashboard
-- Dashboard surface listing products at/below their low_stock_threshold
-- ACCEPTANCE: lowering a threshold above/below current stock moves the
-  product in/out of the warning list
+DESIGN SYSTEM (CSS variables, shared across public pages):
+- Base: white / near-white background, near-black ink (#0A0A0A range)
+- Brand accent: confident saturated blue (#2563EB range) + pale blue tint
+  for section backgrounds and badges. Accent for CTAs, links, highlights —
+  sparingly
+- Type: bold large display headings, tight leading, clamp() responsive;
+  comfortable 1.6-ish body
+- Rounded cards (14–16px), subtle borders, soft hover lift; generous
+  section padding; 4/8px spacing rhythm
+- Respect prefers-reduced-motion everywhere
 
-### 2.3 Margin-unknown UI treatment
-- Dashboard indicator on products where margin_unknown = true ("margin
-  unknown" badge or similar), nudging — not forcing — cost entry
-- Optional one-time "default margin %" merchant setting (schema change →
-  0007 or 0008 for the human) that estimates cost for margin-unknown
-  products; estimated margins must be visually distinct from real ones
-  everywhere they appear
-- ACCEPTANCE: no ₦0-cost-as-real-margin anywhere; estimated vs real is
-  always distinguishable
+LANDING PAGE (/) — replaces the placeholder:
+1. Sticky nav: wordmark left; right: Login (ghost) + "Create your store"
+   (solid blue)
+2. Hero: bold headline with JS-animated rotating word (e.g. "Sell your
+   [fashion/shoes/gadgets/beauty] business online in minutes"); subline:
+   instant storefront link, Paystack payments, real profit tracking;
+   primary CTA → /signup. Staggered entrance animation
+3. 3–4 alternating feature sections (visual side swaps left/right,
+   scroll-reveal via IntersectionObserver): know your real profit (LEAD
+   with this) · instant storefront link · automatic split payments ·
+   low-stock + order tracking. Visuals are styled in-code mockups (browser
+   frame with mini storefront, margin card, etc.) — no stock photos, no
+   screenshots of features that don't exist
+4. Full-width blue CTA band: "Your store, live in 3 minutes" + signup CTA
+5. Honest pricing strip: "No subscription. 1.5% per sale — you only pay
+   when you earn." NO fake tiers, NO testimonials, NO invented user counts
+6. FAQ accordion (4–5 real questions: Is it free? How do I get paid? Do
+   customers need an account? When do I need CAC?)
+7. Footer: wordmark, login/signup links, year
+- No heavy animation library unless justified in the summary; if any dep
+  is added it must not leak into storefront/dashboard bundles
 
-### Phase 3 (after Phase 2 closes): checkout, split payments, webhooks.
-Do NOT start any Phase 3 work unprompted — 3.3 (webhook idempotency) is
-explicitly flagged for line-by-line human review before merge. Details in
-mvp-deliverables-plan-v2.md.
+STOREFRONT restyle (/storefront/[slug] + not-found):
+- Same design tokens (blue accent, cards, type scale); store header with
+  more identity presence (initial avatar, name); product cards with locked
+  image aspect-ratio, clear price, restyled out-of-stock treatment;
+  refined empty state and 404
+- Lean: CSS transitions only, skeleton loaders for product images, NO JS
+  animation libraries. <2s throttled-3G budget re-verified
+- NO functional changes: same data, same anon client, same routes
+
+ACCEPTANCE: landing page exists, communicates the offer, routes to signup,
+feels contemporary next to the reference on a phone; storefront looks like
+a product a vendor would proudly link in their bio; both pass the 3G bar;
+zero functional regressions; zero fabricated social proof.
+
+### 2.5b Dashboard token pass (visual consistency only)
+- Apply the 2.5 design system (CSS variables: blue accent, ink, card style,
+  type scale, button/input/badge styles) to the existing dashboard shell and
+  all /dashboard/* pages: sidebar/nav, welcome header, storefront-link
+  module, banners, product list/forms, bank-details flow
+- This is a RESTYLE of existing components only — no layout redesign, no new
+  features, no new routes, no copy rewrites beyond trivial label fixes
+- The goal: a merchant moving from the new landing page into the dashboard
+  experiences one coherent product, not two eras
+- Full dashboard UX polish (illustrations, onboarding checklist, etc.)
+  remains deferred to 5.7
+- ACCEPTANCE: every dashboard page uses the shared tokens (no leftover
+  ad-hoc grey styling); side-by-side with the landing page reads as the same
+  brand; zero functional regressions (products CRUD, bank flow, copy-link,
+  logout all still work)
+
+### 3.1 Public checkout form
+- On /storefront/[slug]: customer selects product(s) + quantity → checkout
+  form: name (required), phone (required, validate 0XXXXXXXXXX or
+  +234XXXXXXXXXX), email (optional, receipt), delivery address (required)
+- Guest-only (rule 6). Order created server-side via route handler using
+  the service role key (rule 2's first sanctioned use): insert `orders`
+  (status 'pending') + `order_items` snapshots (name, unit_selling_price,
+  unit_cost_price for later margin math). Total computed SERVER-SIDE from
+  DB prices — never trust a client-supplied amount
+- Do NOT decrement stock here — stock moves only on the 'paid' webhook (3.3)
+- Checkout hidden/disabled with "payments not yet activated" notice for
+  merchants with no paystack_subaccount_code
+- ACCEPTANCE: order + items rows appear with correct server-computed totals;
+  invalid phone rejected friendly; email skippable; no-subaccount merchant
+  shows disabled state, not a broken checkout
+
+### 3.2 Paystack inline checkout with split
+- Initialize transaction server-side (/app/api/paystack/*): amount from the
+  order row, subaccount = merchant's code (1.5% percentage_charge already on
+  the subaccount), pass order's paystack_reference; open Paystack inline on
+  the client with the returned access_code
+- Popup success = "payment received, confirming…" state ONLY. Order is not
+  paid until the webhook says so. Never flip status client-side
+- ACCEPTANCE: sandbox card charge completes end-to-end; Paystack dashboard
+  shows correct split both sides; order stays 'pending' until webhook lands
+
+### 3.3 Webhook handler — ⚠️ HUMAN REVIEW FENCE
+- POST /app/api/paystack/webhook: verify x-paystack-signature (HMAC-SHA512
+  of the RAW body with the secret key) BEFORE parsing; reject on mismatch
+- On charge.success: idempotently (payments.paystack_reference +
+  webhook_event_id unique keys) insert payments row, flip order
+  pending → paid, decrement stock atomically — single guarded UPDATE
+  (stock_quantity = stock_quantity - qty WHERE stock_quantity >= qty),
+  never read-then-write
+- Replayed/duplicate webhooks are clean no-ops (200, no double effects)
+- Service role client (rule 2's second sanctioned use)
+- MERGE RULE: this handler does not merge until the human has reviewed the
+  full code line-by-line outside this tool. Write it, present it, stop.
+- ACCEPTANCE: same event replayed twice → exactly one payments row, one
+  status flip, one stock decrement; bad signature → 401, no effects;
+  concurrent orders cannot oversell
+
+### 3.4 Order list on merchant dashboard
+- /dashboard/orders (fills the existing nav stub): merchant's orders,
+  RLS-scoped session client (rule 1), newest first: customer name/phone,
+  items, total, status badge
+- Live updates via Supabase Realtime subscription (enabling realtime on
+  the table = config/SQL for the human if needed)
+- ACCEPTANCE: completing a sandbox checkout makes the order appear/flip to
+  'paid' on an already-open dashboard without reload
+
+### 3.5 Resolve-failure + not-activated UX
+- Bank-details page: friendly handling when account resolution fails —
+  merchant corrects and retries, never dead-ends
+- Storefront: "payments not yet activated" state gets proper treatment
+  (browsing works; buying disabled with an honest notice)
+- ACCEPTANCE: wrong account number → friendly retry; no-subaccount
+  merchant's storefront browses fine but cannot reach Paystack
+
+### Phase 4 (after Phase 3 closes): BI dashboard. Do not start unprompted.
+Details in mvp-deliverables-plan-v2.md.
 
 ## Session protocol
 
@@ -157,7 +239,6 @@ mvp-deliverables-plan-v2.md.
   deliverable requires it.
 - If a deliverable seems to require violating an architecture rule, stop and
   say so instead of working around it.
-- If this file contradicts what you find in the actual code or database,
-  say so before proceeding — the discrepancy is the bug (this happened once:
-  the file claimed anon could read merchants; the policies said otherwise.
-  Flagging it was correct).
+- If this file contradicts the actual code or database, say so before
+  proceeding — the discrepancy is the bug.
+- Note any new dependency in your summary, with size and why.
