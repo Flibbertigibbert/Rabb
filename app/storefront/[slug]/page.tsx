@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/anon';
+import StorefrontProducts from './storefront-products';
 import styles from '../../public.module.css';
 
 export default async function StorefrontPage({
@@ -9,9 +10,13 @@ export default async function StorefrontPage({
 }) {
   const supabase = createClient();
 
+  // payments_active: a generated boolean (paystack_subaccount_code is not
+  // null), anon-readable per supabase/0010_merchants_anon_subaccount_flag.sql
+  // — this exposes only the flag needed to decide whether to show checkout
+  // controls, never the underlying Paystack subaccount code itself.
   const { data: merchant } = await supabase
     .from('merchants')
-    .select('id, business_name, slug')
+    .select('id, business_name, slug, payments_active')
     .eq('slug', params.slug)
     .maybeSingle();
 
@@ -47,35 +52,11 @@ export default async function StorefrontPage({
             </p>
           </div>
         ) : (
-          <div className={styles.productGrid}>
-            {products.map((product) => {
-              const soldOut = product.stock_quantity <= 0;
-              return (
-                <div key={product.id} className={styles.productCard}>
-                  <div className={styles.productImageWrap}>
-                    {product.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className={styles.productImage}
-                        style={{ opacity: soldOut ? 0.45 : 1 }}
-                      />
-                    ) : (
-                      <div className={styles.productImagePlaceholder}>No photo</div>
-                    )}
-                    {soldOut && <span className={styles.soldOutBadge}>Sold out</span>}
-                  </div>
-                  <div className={styles.productInfo}>
-                    <p className={styles.productName}>{product.name}</p>
-                    <p className={styles.productPrice}>
-                      ₦{product.selling_price.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <StorefrontProducts
+            slug={merchant.slug}
+            products={products}
+            paymentsActive={!!merchant.payments_active}
+          />
         )}
       </div>
     </div>
