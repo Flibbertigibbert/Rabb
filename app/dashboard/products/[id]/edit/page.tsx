@@ -145,7 +145,7 @@ export default function EditProductPage() {
   if (loading) {
     return (
       <main style={{ padding: '2rem 1.25rem' }}>
-        <p style={{ color: '#666' }}>Loading…</p>
+        <p className={styles.textMuted}>Loading…</p>
       </main>
     );
   }
@@ -153,11 +153,11 @@ export default function EditProductPage() {
   if (notFound) {
     return (
       <main style={{ padding: '2rem 1.25rem' }}>
-        <h1 style={{ fontSize: '1.375rem', marginBottom: '0.5rem' }}>Product not found</h1>
-        <p style={{ color: '#666', marginBottom: '1rem' }}>
+        <h1 className={styles.pageTitle} style={{ fontSize: '1.375rem' }}>Product not found</h1>
+        <p className={styles.textMuted} style={{ marginBottom: '1rem' }}>
           It may have been removed, or it belongs to another store.
         </p>
-        <Link href="/dashboard/products" style={{ color: '#111', fontWeight: 600 }}>
+        <Link href="/dashboard/products" className={styles.linkAccent}>
           Back to products
         </Link>
       </main>
@@ -167,7 +167,7 @@ export default function EditProductPage() {
   return (
     <main style={{ padding: '2rem 1.25rem' }}>
       <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: 380, margin: '0 auto' }}>
-        <h1 style={{ fontSize: '1.375rem', marginBottom: '1.5rem' }}>Edit product</h1>
+        <h1 className={styles.pageTitle} style={{ fontSize: '1.375rem', marginBottom: '1.5rem' }}>Edit product</h1>
 
         <label className={styles.label}>
           Name
@@ -282,7 +282,8 @@ export default function EditProductPage() {
 
         <Link
           href="/dashboard/products"
-          style={{ display: 'block', textAlign: 'center', marginTop: '0.75rem', fontSize: '0.875rem', color: '#666' }}
+          className={styles.textMuted}
+          style={{ display: 'block', textAlign: 'center', marginTop: '0.75rem', fontSize: '0.875rem' }}
         >
           Cancel
         </Link>

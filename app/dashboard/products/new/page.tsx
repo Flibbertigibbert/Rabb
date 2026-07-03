@@ -99,7 +99,7 @@ export default function NewProductPage() {
         onSubmit={handleSubmit}
         style={{ width: '100%', maxWidth: 380, margin: '0 auto' }}
       >
-        <h1 style={{ fontSize: '1.375rem', marginBottom: '1.5rem' }}>Add product</h1>
+        <h1 className={styles.pageTitle} style={{ marginBottom: '1.5rem' }}>Add product</h1>
 
         <label className={styles.label}>
           Name
@@ -216,7 +216,8 @@ export default function NewProductPage() {
 
         <Link
           href="/dashboard/products"
-          style={{ display: 'block', textAlign: 'center', marginTop: '0.75rem', fontSize: '0.875rem', color: '#666' }}
+          className={styles.textMuted}
+          style={{ display: 'block', textAlign: 'center', marginTop: '0.75rem', fontSize: '0.875rem' }}
         >
           Cancel
         </Link>

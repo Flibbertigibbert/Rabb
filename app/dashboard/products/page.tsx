@@ -169,7 +169,7 @@ export default function ProductsPage() {
     <main style={{ padding: '2rem 1.25rem' }}>
       <div style={{ width: '100%', maxWidth: 480, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-          <h1 style={{ fontSize: '1.375rem' }}>Products</h1>
+          <h1 className={styles.pageTitle} style={{ marginBottom: 0 }}>Products</h1>
           <Link href="/dashboard/products/new" className={styles.btnPrimary}>
             + Add product
           </Link>
@@ -179,7 +179,7 @@ export default function ProductsPage() {
           <label style={{ fontSize: '0.8125rem', fontWeight: 600, display: 'block', marginBottom: '0.375rem' }}>
             Default margin %
           </label>
-          <p style={{ fontSize: '0.75rem', color: '#666', marginBottom: '0.5rem' }}>
+          <p className={styles.textMuted} style={{ fontSize: '0.75rem', marginBottom: '0.5rem' }}>
             Used only to estimate a margin on products without a real cost price —
             never changes the actual cost price.
           </p>
@@ -204,11 +204,11 @@ export default function ProductsPage() {
 
         {error && <p className={styles.errorText}>{error}</p>}
 
-        {products === null && <p style={{ color: '#666' }}>Loading…</p>}
+        {products === null && <p className={styles.textMuted}>Loading…</p>}
 
         {products?.length === 0 && (
           <div className={styles.card} style={{ textAlign: 'center' }}>
-            <p style={{ color: '#666', marginBottom: '0.75rem' }}>No products yet.</p>
+            <p className={styles.textMuted} style={{ marginBottom: '0.75rem' }}>No products yet.</p>
             <Link href="/dashboard/products/new" className={styles.btnPrimary}>
               Add your first product
             </Link>
@@ -217,16 +217,16 @@ export default function ProductsPage() {
 
         {products?.map((product) => (
           <div key={product.id} className={styles.card} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-            <div style={thumbStyle}>
+            <div className={styles.thumb}>
               {product.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={product.image_url}
                   alt={product.name}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               ) : (
-                <span style={{ fontSize: '0.75rem', color: '#aaa' }}>No photo</span>
+                <span className={styles.textFaint} style={{ fontSize: '0.75rem' }}>No photo</span>
               )}
             </div>
 
@@ -238,7 +238,7 @@ export default function ProductsPage() {
                   <span className={styles.badgeWarning}>margin unknown</span>
                 )}
               </p>
-              <p style={{ fontSize: '0.875rem', color: '#666' }}>
+              <p className={styles.textMuted} style={{ fontSize: '0.875rem' }}>
                 ₦{product.selling_price.toLocaleString()} · Stock: {product.stock_quantity}
               </p>
               {renderMargin(product, defaultMarginPercent)}
@@ -276,7 +276,7 @@ function renderMargin(product: Product, defaultMarginPercent: number | null) {
     const marginPercent =
       product.selling_price > 0 ? (marginAmount / product.selling_price) * 100 : 0;
     return (
-      <p style={{ fontSize: '0.8125rem', color: '#333', marginTop: '0.125rem' }}>
+      <p style={{ fontSize: '0.8125rem', marginTop: '0.125rem' }}>
         Margin: ₦{marginAmount.toLocaleString()} ({marginPercent.toFixed(0)}%)
       </p>
     );
@@ -293,15 +293,3 @@ function renderMargin(product: Product, defaultMarginPercent: number | null) {
 
   return null;
 }
-
-const thumbStyle: React.CSSProperties = {
-  width: '3rem',
-  height: '3rem',
-  flexShrink: 0,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: '#f4f4f4',
-  borderRadius: '6px',
-  textAlign: 'center',
-};

@@ -20,7 +20,8 @@ export default function StorefrontLink({ url }: { url: string }) {
       <p
         style={{
           fontSize: '0.875rem',
-          color: '#333',
+          fontWeight: 600,
+          color: 'var(--db-accent)',
           wordBreak: 'break-all',
           marginBottom: '0.75rem',
         }}

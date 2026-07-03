@@ -88,10 +88,8 @@ export default function BankDetailsPage() {
   return (
     <main style={{ padding: '2rem 1.25rem', display: 'flex', justifyContent: 'center' }}>
       <div style={{ width: '100%', maxWidth: 380 }}>
-        <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-          Activate payments
-        </h1>
-        <p style={{ color: '#666', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+        <h1 className={styles.pageTitle}>Activate payments</h1>
+        <p className={styles.textMuted} style={{ fontSize: '0.875rem', marginBottom: '1.5rem' }}>
           Add your settlement bank account so you can start receiving payouts
           from sales.
         </p>
@@ -138,8 +136,8 @@ export default function BankDetailsPage() {
           </button>
         ) : (
           <>
-            <div className={styles.card} style={{ background: '#f4f4f4', marginBottom: '1rem', textAlign: 'left' }}>
-              <p style={{ fontSize: '0.875rem', color: '#666', marginBottom: '0.25rem' }}>
+            <div className={styles.card} style={{ background: 'var(--db-bg-subtle)', marginBottom: '1rem', textAlign: 'left' }}>
+              <p className={styles.textMuted} style={{ fontSize: '0.875rem', marginBottom: '0.25rem' }}>
                 Account name:
               </p>
               <p style={{ fontWeight: 600 }}>{resolvedName}</p>

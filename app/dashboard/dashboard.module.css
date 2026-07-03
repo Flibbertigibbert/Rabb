@@ -10,6 +10,59 @@
   border: 1px solid var(--db-border-soft);
   border-radius: var(--db-radius);
   padding: 1rem;
+  transition: box-shadow 0.15s ease;
+}
+.card:hover {
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+}
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}
+
+.warningCard {
+  composes: card;
+  background: var(--db-warning-bg);
+  border-color: var(--db-warning-border);
+}
+
+.pageTitle {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.5rem;
+  color: var(--db-text);
+}
+
+.textMuted {
+  color: var(--db-text-muted);
+}
+
+.textFaint {
+  color: var(--db-text-faint);
+}
+
+.linkAccent {
+  color: var(--db-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.linkAccent:hover {
+  color: var(--db-accent-dark);
+}
+
+.thumb {
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--db-bg-subtle);
+  border-radius: var(--db-radius-sm);
+  text-align: center;
+  overflow: hidden;
 }
 
 .input,
@@ -63,8 +116,12 @@
 
 .btnPrimary {
   composes: btn;
-  background: var(--db-text);
+  background: var(--db-accent);
   color: #fff;
+  transition: background 0.15s ease;
+}
+.btnPrimary:hover:not(:disabled) {
+  background: var(--db-accent-dark);
 }
 
 .btnSecondary {
@@ -72,6 +129,9 @@
   background: #fff;
   color: var(--db-text);
   border-color: var(--db-border);
+}
+.btnSecondary:hover:not(:disabled) {
+  background: var(--db-bg-subtle);
 }
 
 .btnDanger {
@@ -175,8 +235,10 @@
 }
 
 .sidebarLogo {
-  font-weight: 700;
+  font-weight: 800;
   font-size: 1.125rem;
+  letter-spacing: -0.02em;
+  color: var(--db-text);
   margin-bottom: 1.5rem;
   padding: 0 0.75rem;
 }
@@ -195,6 +257,10 @@
   border: none;
   font-family: inherit;
   cursor: pointer;
+}
+.sidebarNavLink:hover {
+  background: var(--db-bg-subtle);
+  color: var(--db-text);
 }
 
 @media (min-width: 768px) {

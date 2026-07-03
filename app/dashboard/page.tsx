@@ -44,10 +44,8 @@ export default async function DashboardPage() {
       <div style={{ width: '100%', maxWidth: 480, margin: '0 auto', textAlign: 'center' }}>
         {error || !merchant ? (
           <>
-            <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-              No merchant row found
-            </h1>
-            <p style={{ color: '#666', maxWidth: 420, margin: '0 auto' }}>
+            <h1 className={styles.pageTitle}>No merchant row found</h1>
+            <p className={styles.textMuted} style={{ maxWidth: 420, margin: '0 auto' }}>
               You're logged in, but no matching row exists in{' '}
               <code>merchants</code>. Check that the 0004 trigger ran and that
               RLS policies from 0.2 are applied.
@@ -55,23 +53,15 @@ export default async function DashboardPage() {
           </>
         ) : (
           <>
-            <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-              Welcome, {merchant.business_name} 🎉
-            </h1>
-            <p style={{ color: '#666', marginBottom: '1.5rem' }}>{merchant.email}</p>
+            <h1 className={styles.pageTitle}>Welcome, {merchant.business_name} 🎉</h1>
+            <p className={styles.textMuted} style={{ marginBottom: '1.5rem' }}>
+              {merchant.email}
+            </p>
 
             {storefrontUrl && <StorefrontLink url={storefrontUrl} />}
 
             {lowStockProducts.length > 0 && (
-              <div
-                className={styles.card}
-                style={{
-                  borderColor: 'var(--db-warning-border)',
-                  background: 'var(--db-danger-bg)',
-                  textAlign: 'left',
-                  marginBottom: '1rem',
-                }}
-              >
+              <div className={styles.warningCard} style={{ textAlign: 'left', marginBottom: '1rem' }}>
                 <p style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>
                   Low stock
                 </p>
@@ -89,10 +79,10 @@ export default async function DashboardPage() {
                   >
                     <span>{product.name}</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ color: '#a13a33' }}>
+                      <span style={{ color: 'var(--db-warning)' }}>
                         {product.stock_quantity} left (threshold {product.low_stock_threshold})
                       </span>
-                      <Link href={`/dashboard/products/${product.id}/edit`} style={{ color: '#111', fontWeight: 600, textDecoration: 'none' }}>
+                      <Link href={`/dashboard/products/${product.id}/edit`} className={styles.linkAccent}>
                         Edit
                       </Link>
                     </span>
@@ -102,7 +92,7 @@ export default async function DashboardPage() {
             )}
 
             {merchant.kyc_status !== 'verified' && (
-              <div className={styles.card} style={{ background: '#fff8e6', borderColor: '#f0d68a' }}>
+              <div className={styles.warningCard}>
                 <p style={{ fontSize: '0.875rem', marginBottom: '0.75rem' }}>
                   Add your bank details to start accepting payments from
                   customers.
