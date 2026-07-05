@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { getStorefrontUrl } from '@/lib/storefront-url';
 import StorefrontLink from './storefront-link';
 import styles from './dashboard.module.css';
 
@@ -31,13 +32,11 @@ export default async function DashboardPage() {
     (p) => p.stock_quantity <= p.low_stock_threshold
   );
 
-  // Read the request host rather than hardcoding a domain, so this keeps
-  // working unchanged once a live domain replaces {slug}.localhost:3000
-  // (see PLAN.md 0.4b) — the middleware's host regex is the only place
-  // that needs to widen at that point.
+  // getStorefrontUrl is host-aware: subdomain form on *.localhost, path
+  // form (/storefront/{slug}) everywhere else until the real custom
+  // domain exists — see lib/storefront-url.ts.
   const host = headers().get('host') || '';
-  const protocol = host.includes('localhost') ? 'http' : 'https';
-  const storefrontUrl = merchant ? `${protocol}://${merchant.slug}.${host}` : null;
+  const storefrontUrl = merchant ? getStorefrontUrl(host, merchant.slug) : null;
 
   return (
     <main style={{ padding: '2rem 1.25rem' }}>

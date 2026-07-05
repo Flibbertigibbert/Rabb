@@ -6,6 +6,17 @@ export async function middleware(request: NextRequest) {
   const subdomain = host.split('.')[0];
   console.log('Subdomain detected:', subdomain);
 
+  // Storefront is a fully public, anon-only surface (architecture rule
+  // 3) — pass direct /storefront/* requests straight through untouched,
+  // on every host. This is what makes /storefront/[slug] reachable as a
+  // plain path on the deployed *.vercel.app host (our testing fallback
+  // until a real custom domain exists — see PLAN.md's launch-gating
+  // section), and it also skips the session-refresh work below
+  // entirely, since a storefront request never needs it.
+  if (request.nextUrl.pathname.startsWith('/storefront')) {
+    return NextResponse.next();
+  }
+
   // Storefront (subdomain) routes are public — only /dashboard/* below
   // requires a session. This response object is what carries refreshed
   // session cookies back to the browser; it must be reused (not replaced)
@@ -44,7 +55,8 @@ export async function middleware(request: NextRequest) {
   // Storefront routing: {slug}.localhost dev subdomains rewrite to the
   // public storefront shell. Scoped to *.localhost only so it can't
   // misfire on the *.vercel.app production host, which has no real
-  // custom domain yet (see PLAN.md).
+  // custom domain yet (see PLAN.md) — there, direct /storefront/[slug]
+  // paths are already handled by the early return above instead.
   const hostname = host.split(':')[0];
   const slugMatch = hostname.match(/^([^.]+)\.localhost$/);
 
