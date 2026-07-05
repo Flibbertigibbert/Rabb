@@ -3,6 +3,16 @@ import { createClient } from '@/lib/supabase/anon';
 import StorefrontProducts from './storefront-products';
 import styles from '../../public.module.css';
 
+// The anon Supabase client (lib/supabase/anon.ts) deliberately never
+// touches cookies(), which means this page has no "Dynamic API" usage
+// to automatically opt it out of Next's static/Full Route Cache. Without
+// this, Next treats /storefront/[slug] as static-after-first-render —
+// the first request for a given slug gets cached indefinitely, so
+// merchant changes (payments activation, new products, stock, price
+// edits) would never show up without a redeploy. This page must always
+// reflect current DB state, so force dynamic rendering explicitly.
+export const dynamic = 'force-dynamic';
+
 export default async function StorefrontPage({
   params,
 }: {
