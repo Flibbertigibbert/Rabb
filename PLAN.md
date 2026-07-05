@@ -90,6 +90,15 @@ absence of a live domain or live keys as a blocker for any deliverable.
   next migration number is 0010)
 - Known gap, deliberately deferred: no password-reset flow (Phase 5
   candidate — do not build unprompted)
+- 5.2 (launch-blocking, not yet decided): oversold-item reconciliation
+  policy. The webhook handler (3.3, supabase/0011_process_paystack_
+  charge_success.sql) will still record a real payment and flip an
+  order to 'paid' even if a race already oversold one of its line
+  items — it does not refund, backorder, or notify anyone. What to
+  actually do when that happens (refund the customer, contact them to
+  substitute/backorder, alert the merchant, some combination) is a
+  product/policy decision, not a code change, and must be made before
+  launch — do not build a fix for this unprompted.
 
 ## Environment
 
